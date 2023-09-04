@@ -54,7 +54,7 @@ $listBox = New-Object System.Windows.Forms.ListBox
 $listBox.Location = New-Object System.Drawing.Point(20,80)
 $listBox.Size = New-Object System.Drawing.Size(520,40)
 $listBox.Height = 160
-$listBox.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Regular)
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
 $listbox.SelectionMode = 'MultiExtended'
 
 foreach($sourceVCSA in $Sourcevcenterlist){
@@ -126,7 +126,7 @@ $listBox = New-Object System.Windows.Forms.ListBox
 $listBox.Location = New-Object System.Drawing.Point(20,80)
 $listBox.Size = New-Object System.Drawing.Size(520,40)
 $listBox.Height = 160
-$listBox.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Regular)
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
 $listbox.SelectionMode = 'MultiExtended'
 
 foreach($targetVCSA in $Targetvcenterlist){
@@ -208,7 +208,7 @@ $listBox = New-Object System.Windows.Forms.ListBox
 $listBox.Location = New-Object System.Drawing.Point(20,80)
 $listBox.Size = New-Object System.Drawing.Size(520,40)
 $listBox.Height = 160
-$listBox.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Regular)
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
 $listbox.SelectionMode = 'MultiExtended'
 
 foreach($sourceportgroup in $SourcePortgroups){
@@ -229,12 +229,12 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK){
 
 ##########################################################################################################################
 
-#Target Portgroup portgroup Selection Box
+#Target Portgroup Selection Box
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'Select a Source DPG'
+$form.Text = 'Select a Target DPG'
 $form.Size = New-Object System.Drawing.Size(600,400)
 $form.StartPosition = 'CenterScreen'
 
@@ -257,14 +257,14 @@ $form.Controls.Add($cancelButton)
 $label = New-Object System.Windows.Forms.Label
 $label.Location = New-Object System.Drawing.Point(20,40)
 $label.Size = New-Object System.Drawing.Size(560,40)
-$label.Text = 'Select a Source DPG:'
+$label.Text = 'Select a Target DPG:'
 $form.Controls.Add($label)
 
 $listBox = New-Object System.Windows.Forms.ListBox
 $listBox.Location = New-Object System.Drawing.Point(20,80)
 $listBox.Size = New-Object System.Drawing.Size(520,40)
 $listBox.Height = 160
-$listBox.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Regular)
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
 $listbox.SelectionMode = 'MultiExtended'
 
 foreach($targetPortgroup in $targetPortgroups){
@@ -285,11 +285,66 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK){
 
 ##########################################################################################################################
 
+#Target Cluster Selection Box
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = 'Select a Target Cluster'
+$form.Size = New-Object System.Drawing.Size(600,400)
+$form.StartPosition = 'CenterScreen'
+
+$okButton = New-Object System.Windows.Forms.Button
+$okButton.Location = New-Object System.Drawing.Point(150,240)
+$okButton.Size = New-Object System.Drawing.Size(150,46)
+$okButton.Text = 'OK'
+$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.AcceptButton = $okButton
+$form.Controls.Add($okButton)
+
+$cancelButton = New-Object System.Windows.Forms.Button
+$cancelButton.Location = New-Object System.Drawing.Point(300,240)
+$cancelButton.Size = New-Object System.Drawing.Size(150,46)
+$cancelButton.Text = 'Cancel'
+$cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$form.CancelButton = $cancelButton
+$form.Controls.Add($cancelButton)
+
+$label = New-Object System.Windows.Forms.Label
+$label.Location = New-Object System.Drawing.Point(20,40)
+$label.Size = New-Object System.Drawing.Size(560,40)
+$label.Text = 'Select a Target Cluster:'
+$form.Controls.Add($label)
+
+$listBox = New-Object System.Windows.Forms.ListBox
+$listBox.Location = New-Object System.Drawing.Point(20,80)
+$listBox.Size = New-Object System.Drawing.Size(520,40)
+$listBox.Height = 160
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
+$listbox.SelectionMode = 'MultiExtended'
+
+foreach($targetCluster in $targetClusters){
+    [void] $listBox.Items.Add($targetCluster)
+}
+
+$form.Controls.Add($listBox)
+
+$form.Topmost = $true
+
+$result = $form.ShowDialog()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK){
+    
+    $targetCluster = $listBox.SelectedItem
+
+}
+##########################################################################################################################
+
 #Collect all VM's from source Portgroup
 Write-Host "Collecting VM's on selected portgroup"
 
 $filteredVMs = @()
- 
+
 foreach ($singlesourcevm in $SourceVMs){
     $singlevmnetwork = ($singlesourcevm | Get-NetworkAdapter).NetworkName
     if ($singlevmnetwork -eq $sourceportgroup){
@@ -297,40 +352,122 @@ foreach ($singlesourcevm in $SourceVMs){
         }
     }
         
-Write-Host "Below are the VM's that will be moved with this migration"
+
+Write-Host ""
+Write-Host -ForegroundColor Green "Below are the VM's that will be moved with this migration"
+Write-Host ""
+Write-Host ""
 $filteredVMs.name
+
 
 Start-Sleep 10
 
 #exclusion portion
 #Look for VMs with multiple datastores and setup array for exclusions
 Write-Host "Collecting exclusion VM's with multiple datastores"
-$multidsarray = @()
-foreach ($singlevm in $HostVMs){
+$multiDSexclusion = @()
+foreach ($singlevm in $filteredVMs){
     $temparray1 = "" | select Name
     $dscount = ($singlevm | Get-Datastore).count
     if ($dscount -ne "1"){
-        $singlevm.Name = $temparray1.Name
-        $multidsarray += $temparray1
+        $temparray1.name = $singlevm.Name
+        $multiDSexclusion += $temparray1
     }
 }
 
+Write-Host ""
+Write-Host -BackgroundColor Red -ForegroundColor White "The following VM's will not be migrated due to multi-datastore exception"
+Write-Host ""
+Write-Host ""
+$multiDSexclusion.Name
 
-Start-Sleep 3
+Start-Sleep 10
 
 #Execution portion
 foreach ($singlevm in $filteredvms){
-    if ($multidsarray -contains $singlevm.name){
+
+    if ($multiDSexclusion.name -contains $singlevm.name){
         Write-Host "VM $singlevm is in datastore exclusion list, skipping"
     }
+    
     else{
+        #check for multi nic adaptor. Select new portgroup for the second nic and add to move vm network array
+        $Netadaptercount = ($singlevm | Get-NetworkAdapter).count
+        $AllTargetportgroups = @()
+
+        if($Netadaptercount -gt 1){
+        ##########################################################################################################################
+
+        #Target Portgroup portgroup for 2nd nic Selection Box
+        Add-Type -AssemblyName System.Windows.Forms
+        Add-Type -AssemblyName System.Drawing
+
+        $form = New-Object System.Windows.Forms.Form
+        $form.Text = 'Select a Target DPG'
+        $form.Size = New-Object System.Drawing.Size(600,400)
+        $form.StartPosition = 'CenterScreen'
+
+        $okButton = New-Object System.Windows.Forms.Button
+        $okButton.Location = New-Object System.Drawing.Point(150,240)
+        $okButton.Size = New-Object System.Drawing.Size(150,46)
+        $okButton.Text = 'OK'
+        $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $form.AcceptButton = $okButton
+        $form.Controls.Add($okButton)
+
+        $cancelButton = New-Object System.Windows.Forms.Button
+        $cancelButton.Location = New-Object System.Drawing.Point(300,240)
+        $cancelButton.Size = New-Object System.Drawing.Size(150,46)
+        $cancelButton.Text = 'Cancel'
+        $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+        $form.CancelButton = $cancelButton
+        $form.Controls.Add($cancelButton)
+
+        $label = New-Object System.Windows.Forms.Label
+        $label.Location = New-Object System.Drawing.Point(20,40)
+        $label.Size = New-Object System.Drawing.Size(560,40)
+        $label.Text = 'Select a Target DPG for the 2nd NIC:'
+        $form.Controls.Add($label)
+
+        $listBox = New-Object System.Windows.Forms.ListBox
+        $listBox.Location = New-Object System.Drawing.Point(20,80)
+        $listBox.Size = New-Object System.Drawing.Size(520,40)
+        $listBox.Height = 160
+        $listBox.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Regular)
+        $listbox.SelectionMode = 'MultiExtended'
+
+        foreach($targetPortgroup2 in $targetPortgroups){
+        [void] $listBox.Items.Add($targetPortgroup2)
+        }
+
+        $form.Controls.Add($listBox)
+
+        $form.Topmost = $true
+
+        $result = $form.ShowDialog()
+
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK){
+    
+        $targetPortgroup2 = $listBox.SelectedItem
+        }
+##########################################################################################################################
+        $AllTargetportgroups += $targetPortgroup
+        $AllTargetportgroups += $targetPortgroup2
+    }
+
+        if($Netadaptercount -eq 1){
+            $AllTargetportgroups += $targetPortgroup
+        }
+
         #find the folder the VM is currently using and verify folder exists on destination VCSA
-        $TargetVMFolderCheck = $targetDatacenter | Get-Folder | where {$_.type -eq "VM"}
-         if ($TargetVMFolderCheck.Name -notcontains $Singlevm.Folder.Name){
+        $TargetVMFolderCheck = $targetDatacenter | Get-Folder | where {$_.type -eq "VM"} | sort -Descending
+        if ($TargetVMFolderCheck.Name -notcontains $Singlevm.Folder.Name){
             Write-host "WARNING - Folder not discovered in target Cluster! Folder Migration will Fail."
             Write-host "------------------------------------------------------------------------"
             Read-Host "Press any key to continue or Ctrl + C to stop the script"
-         }
+        }
+
+        Start-Sleep 5
 
         #Start pings
         Write-Host "Creating continuous ping for VM $singlevm"
@@ -349,16 +486,17 @@ foreach ($singlevm in $filteredvms){
         $targetVMFolder = $targetDatacenter | Get-Folder | where{($_.type -eq "VM") -and ($_.name -eq $singlevm.Folder.Name)}
 
         #start VM Migration
-        Write-Host "Migrating vm $singlevm to Target VCSA Host $targetHost"
-        $singlevm | Move-VM -Destination $targethost -PortGroup $targetDPG -WhatIf
+        Write-Host -ForegroundColor Green "Migrating vm $singlevm to Target VCSA Host $targetHost"
+        $singlevm | Move-VM -Destination $targethost -PortGroup $AllTargetportgroups -WhatIf
 
         #start Folder Migration
-        Write-Host "Migrating vm $singlevm to Target VCSA Folder $targetVMFolder"
+        Write-Host -ForegroundColor Green "Migrating vm $singlevm to Target VCSA Folder $targetVMFolder"
         $singlevm | Move-VM -Destination $TargetVMFolder -WhatIf
 
         #Re-Apply Tags (needs work)
         #$vmtags | %{get-vm $singlevm -Server $DestVC | New-TagAssignment -Tag ($_.Tag).name -Server $DestVC | Select Entity, Tag}
 
+        $AllTargetportgroups = $null
 
         
     }
