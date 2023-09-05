@@ -341,7 +341,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK){
 ##########################################################################################################################
 
 #Collect all VM's from source Portgroup
-Write-Host "Collecting VM's on selected portgroup"
+Write-Host -BackgroundColor Green "Collecting VM's on selected portgroup"
 
 $filteredVMs = @()
 
@@ -376,7 +376,7 @@ foreach ($singlevm in $filteredVMs){
 }
 
 Write-Host ""
-Write-Host -BackgroundColor Red -ForegroundColor White "The following VM's will not be migrated due to multi-datastore exception"
+Write-Host -BackgroundColor Red "The following VM's will not be migrated due to multi-datastore exclusion"
 Write-Host ""
 Write-Host ""
 $multiDSexclusion.Name
@@ -386,16 +386,36 @@ Start-Sleep 10
 #Execution portion
 foreach ($singlevm in $filteredvms){
 
+    
+
+    #multi-DS exclusion
     if ($multiDSexclusion.name -contains $singlevm.name){
-        Write-Host "VM $singlevm is in datastore exclusion list, skipping"
+        Write-Host ""
+        Write-Host -BackgroundColor Red "VM $singlevm is in datastore exclusion list, skipping"
+        Continue
+    }
+
+    #Snapshot Exclusion | Best practice is to have no snapshot while doing a cross vcenter migration. Excluding any VM with a snapshot and reccomend to remove them before migration.
+    $snapshotcount = ($singlevm | Get-Snapshot).count
+    if($snapshotcount -gt 0){
+        Write-Host ""
+        Write-Host -BackgroundColor Red "VM $singlevm has a snapshot that needs to be removed, skipping"
+        Continue
+    }
+
+    #nics greater than 3 exception
+    $Netadaptercount = ($singlevm | Get-NetworkAdapter).count
+    if($Netadaptercount -ge 3){
+        Write-Host ""
+        Write-host -BackgroundColor red "VM $singlevm has 3 or more NICs' This is curently not supported. Skipping VM"
+        continue
     }
     
     else{
         #check for multi nic adaptor. Select new portgroup for the second nic and add to move vm network array
-        $Netadaptercount = ($singlevm | Get-NetworkAdapter).count
         $AllTargetportgroups = @()
 
-        if($Netadaptercount -gt 1){
+        if($Netadaptercount -eq 2){
         ##########################################################################################################################
 
         #Target Portgroup portgroup for 2nd nic Selection Box
@@ -449,18 +469,18 @@ foreach ($singlevm in $filteredvms){
     if ($result -eq [System.Windows.Forms.DialogResult]::OK){
     
         $targetPortgroup2 = $listBox.SelectedItem
-        }
-##########################################################################################################################
-        $AllTargetportgroups += $targetPortgroup
-        $AllTargetportgroups += $targetPortgroup2
     }
+
+    $AllTargetportgroups += $targetPortgroup
+    $AllTargetportgroups += $targetPortgroup2
+}
 
         if($Netadaptercount -eq 1){
             $AllTargetportgroups += $targetPortgroup
         }
 
         #find the folder the VM is currently using and verify folder exists on destination VCSA
-        $TargetVMFolderCheck = $targetDatacenter | Get-Folder | where {$_.type -eq "VM"} | sort -Descending
+        $TargetVMFolderCheck = $targetDatacenter | Get-Folder | where {$_.type -eq "VM"}
         if ($TargetVMFolderCheck.Name -notcontains $Singlevm.Folder.Name){
             Write-host "WARNING - Folder not discovered in target Cluster! Folder Migration will Fail."
             Write-host "------------------------------------------------------------------------"
@@ -468,6 +488,10 @@ foreach ($singlevm in $filteredvms){
         }
 
         Start-Sleep 5
+
+        Write-Host -BackgroundColor green "---------------------------------"
+        Write-host -BackgroundColor green -ForegroundColor red "Migrating vm $singlevm"
+        Write-Host -BackgroundColor green "---------------------------------"
 
         #Start pings
         Write-Host "Creating continuous ping for VM $singlevm"
@@ -497,7 +521,6 @@ foreach ($singlevm in $filteredvms){
         #$vmtags | %{get-vm $singlevm -Server $DestVC | New-TagAssignment -Tag ($_.Tag).name -Server $DestVC | Select Entity, Tag}
 
         $AllTargetportgroups = $null
-
         
     }
 }
