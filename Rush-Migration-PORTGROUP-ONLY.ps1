@@ -24,7 +24,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'Select a Source vCenter'
+$form.Text = 'Select a Target vCenter'
 $form.Size = New-Object System.Drawing.Size(600,400)
 $form.StartPosition = 'CenterScreen'
 
@@ -47,7 +47,7 @@ $form.Controls.Add($cancelButton)
 $label = New-Object System.Windows.Forms.Label
 $label.Location = New-Object System.Drawing.Point(20,40)
 $label.Size = New-Object System.Drawing.Size(560,40)
-$label.Text = 'Select a Source vCenter:'
+$label.Text = 'Select a Target vCenter:'
 $form.Controls.Add($label)
 
 $listBox = New-Object System.Windows.Forms.ListBox
@@ -84,7 +84,7 @@ Try {connect-viserver $sourceVCSA -Credential $sourceVCSACredentials} Catch {Con
 $SourceDatacenter = Get-Datacenter
 $sourceHosts = Get-VMHost
 $sourceClusters = Get-Cluster
-$SourcePortgroups = Get-VDPortgroup
+$SourcePortgroups = Get-VDPortgroup | Sort-Object
 $SourceVMs = Get-vm | where {($_.ExtensionData.Config.ManagedBy.ExtensionKey -notlike 'com.vmware.vcDr*') -or ($_.ExtensionData.Config.ManagedBy.ExtensionKey -notlike 'com.vmware.vcHms*')}
 
 Disconnect-VIServer "*" -Confirm:$False
@@ -155,9 +155,10 @@ Try {connect-viserver $targetVCSA -Credential $targetVCSACredentials} Catch {Con
 $targetDatacenter = Get-Datacenter
 $targetHosts = Get-VMHost
 $targetClusters = Get-Cluster
-$targetPortgroups = Get-VDPortgroup
+$targetPortgroups = Get-VDPortgroup | Sort-Object
+$targetDatastores = Get-Datastore
 
-Disconnect-VIServer "*" -Force:$False
+Disconnect-VIServer "*" -confirm:$False
 
 Write-Host "All variables collected. Reconnecting to both VCSA's"
 
@@ -179,11 +180,11 @@ Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'Select a Source portgroup'
-$form.Size = New-Object System.Drawing.Size(600,400)
+$form.Size = New-Object System.Drawing.Size(1200,800)
 $form.StartPosition = 'CenterScreen'
 
 $okButton = New-Object System.Windows.Forms.Button
-$okButton.Location = New-Object System.Drawing.Point(150,240)
+$okButton.Location = New-Object System.Drawing.Point(150,650)
 $okButton.Size = New-Object System.Drawing.Size(150,46)
 $okButton.Text = 'OK'
 $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
@@ -191,7 +192,7 @@ $form.AcceptButton = $okButton
 $form.Controls.Add($okButton)
 
 $cancelButton = New-Object System.Windows.Forms.Button
-$cancelButton.Location = New-Object System.Drawing.Point(300,240)
+$cancelButton.Location = New-Object System.Drawing.Point(300,650)
 $cancelButton.Size = New-Object System.Drawing.Size(150,46)
 $cancelButton.Text = 'Cancel'
 $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
@@ -206,9 +207,9 @@ $form.Controls.Add($label)
 
 $listBox = New-Object System.Windows.Forms.ListBox
 $listBox.Location = New-Object System.Drawing.Point(20,80)
-$listBox.Size = New-Object System.Drawing.Size(520,40)
-$listBox.Height = 160
-$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
+$listBox.Size = New-Object System.Drawing.Size(1000,40)
+$listBox.Height = 500
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",15,[System.Drawing.FontStyle]::Regular)
 $listbox.SelectionMode = 'MultiExtended'
 
 foreach($sourceportgroup in $SourcePortgroups){
@@ -234,12 +235,12 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'Select a Target DPG'
-$form.Size = New-Object System.Drawing.Size(600,400)
+$form.Text = 'Select a Target Portgroup'
+$form.Size = New-Object System.Drawing.Size(1200,800)
 $form.StartPosition = 'CenterScreen'
 
 $okButton = New-Object System.Windows.Forms.Button
-$okButton.Location = New-Object System.Drawing.Point(150,240)
+$okButton.Location = New-Object System.Drawing.Point(150,650)
 $okButton.Size = New-Object System.Drawing.Size(150,46)
 $okButton.Text = 'OK'
 $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
@@ -247,7 +248,7 @@ $form.AcceptButton = $okButton
 $form.Controls.Add($okButton)
 
 $cancelButton = New-Object System.Windows.Forms.Button
-$cancelButton.Location = New-Object System.Drawing.Point(300,240)
+$cancelButton.Location = New-Object System.Drawing.Point(300,650)
 $cancelButton.Size = New-Object System.Drawing.Size(150,46)
 $cancelButton.Text = 'Cancel'
 $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
@@ -257,14 +258,14 @@ $form.Controls.Add($cancelButton)
 $label = New-Object System.Windows.Forms.Label
 $label.Location = New-Object System.Drawing.Point(20,40)
 $label.Size = New-Object System.Drawing.Size(560,40)
-$label.Text = 'Select a Target DPG:'
+$label.Text = 'Select a Target Portgroup:'
 $form.Controls.Add($label)
 
 $listBox = New-Object System.Windows.Forms.ListBox
 $listBox.Location = New-Object System.Drawing.Point(20,80)
-$listBox.Size = New-Object System.Drawing.Size(520,40)
-$listBox.Height = 160
-$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
+$listBox.Size = New-Object System.Drawing.Size(1000,40)
+$listBox.Height = 500
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",15,[System.Drawing.FontStyle]::Regular)
 $listbox.SelectionMode = 'MultiExtended'
 
 foreach($targetPortgroup in $targetPortgroups){
@@ -279,6 +280,7 @@ $result = $form.ShowDialog()
 
 if ($result -eq [System.Windows.Forms.DialogResult]::OK){
     
+   
     $targetPortgroup = $listBox.SelectedItem
 
 }
@@ -291,11 +293,11 @@ Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'Select a Target Cluster'
-$form.Size = New-Object System.Drawing.Size(600,400)
+$form.Size = New-Object System.Drawing.Size(1200,800)
 $form.StartPosition = 'CenterScreen'
 
 $okButton = New-Object System.Windows.Forms.Button
-$okButton.Location = New-Object System.Drawing.Point(150,240)
+$okButton.Location = New-Object System.Drawing.Point(150,650)
 $okButton.Size = New-Object System.Drawing.Size(150,46)
 $okButton.Text = 'OK'
 $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
@@ -303,7 +305,7 @@ $form.AcceptButton = $okButton
 $form.Controls.Add($okButton)
 
 $cancelButton = New-Object System.Windows.Forms.Button
-$cancelButton.Location = New-Object System.Drawing.Point(300,240)
+$cancelButton.Location = New-Object System.Drawing.Point(300,650)
 $cancelButton.Size = New-Object System.Drawing.Size(150,46)
 $cancelButton.Text = 'Cancel'
 $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
@@ -318,9 +320,9 @@ $form.Controls.Add($label)
 
 $listBox = New-Object System.Windows.Forms.ListBox
 $listBox.Location = New-Object System.Drawing.Point(20,80)
-$listBox.Size = New-Object System.Drawing.Size(520,40)
-$listBox.Height = 160
-$listBox.Font = New-Object System.Drawing.Font("Lucida Console",20,[System.Drawing.FontStyle]::Regular)
+$listBox.Size = New-Object System.Drawing.Size(1000,40)
+$listBox.Height = 500
+$listBox.Font = New-Object System.Drawing.Font("Lucida Console",15,[System.Drawing.FontStyle]::Regular)
 $listbox.SelectionMode = 'MultiExtended'
 
 foreach($targetCluster in $targetClusters){
@@ -358,6 +360,8 @@ Write-Host -ForegroundColor Green "Below are the VM's that will be moved with th
 Write-Host ""
 Write-Host ""
 $filteredVMs.name
+Write-Host ""
+Write-Host ""
 
 
 Start-Sleep 10
@@ -380,6 +384,8 @@ Write-Host -BackgroundColor Red "The following VM's will not be migrated due to 
 Write-Host ""
 Write-Host ""
 $multiDSexclusion.Name
+Write-Host ""
+Write-Host ""
 
 Start-Sleep 10
 
@@ -416,6 +422,7 @@ foreach ($singlevm in $filteredvms){
         $AllTargetportgroups = @()
 
         if($Netadaptercount -eq 2){
+        Write-Host "NET ADAPTER COUNT IS MORE THAN 1"
         ##########################################################################################################################
 
         #Target Portgroup portgroup for 2nd nic Selection Box
@@ -423,12 +430,12 @@ foreach ($singlevm in $filteredvms){
         Add-Type -AssemblyName System.Drawing
 
         $form = New-Object System.Windows.Forms.Form
-        $form.Text = 'Select a Target DPG'
-        $form.Size = New-Object System.Drawing.Size(600,400)
+        $form.Text = 'Select a Target Potrgroup for 2nd NIC'
+        $form.Size = New-Object System.Drawing.Size(1200,800)
         $form.StartPosition = 'CenterScreen'
 
         $okButton = New-Object System.Windows.Forms.Button
-        $okButton.Location = New-Object System.Drawing.Point(150,240)
+        $okButton.Location = New-Object System.Drawing.Point(150,650)
         $okButton.Size = New-Object System.Drawing.Size(150,46)
         $okButton.Text = 'OK'
         $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
@@ -436,7 +443,7 @@ foreach ($singlevm in $filteredvms){
         $form.Controls.Add($okButton)
 
         $cancelButton = New-Object System.Windows.Forms.Button
-        $cancelButton.Location = New-Object System.Drawing.Point(300,240)
+        $cancelButton.Location = New-Object System.Drawing.Point(300,650)
         $cancelButton.Size = New-Object System.Drawing.Size(150,46)
         $cancelButton.Text = 'Cancel'
         $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
@@ -446,14 +453,14 @@ foreach ($singlevm in $filteredvms){
         $label = New-Object System.Windows.Forms.Label
         $label.Location = New-Object System.Drawing.Point(20,40)
         $label.Size = New-Object System.Drawing.Size(560,40)
-        $label.Text = 'Select a Target DPG for the 2nd NIC:'
+        $label.Text = 'Select a Target Potrgroup for 2nd NIC:'
         $form.Controls.Add($label)
 
         $listBox = New-Object System.Windows.Forms.ListBox
         $listBox.Location = New-Object System.Drawing.Point(20,80)
-        $listBox.Size = New-Object System.Drawing.Size(520,40)
-        $listBox.Height = 160
-        $listBox.Font = New-Object System.Drawing.Font("Lucida Console",12,[System.Drawing.FontStyle]::Regular)
+        $listBox.Size = New-Object System.Drawing.Size(1000,40)
+        $listBox.Height = 500
+        $listBox.Font = New-Object System.Drawing.Font("Lucida Console",15,[System.Drawing.FontStyle]::Regular)
         $listbox.SelectionMode = 'MultiExtended'
 
         foreach($targetPortgroup2 in $targetPortgroups){
@@ -476,6 +483,7 @@ foreach ($singlevm in $filteredvms){
 }
 
         if($Netadaptercount -eq 1){
+            write-host "NET ADAPTER COUNT is 1"
             $AllTargetportgroups += $targetPortgroup
         }
 
@@ -502,20 +510,30 @@ foreach ($singlevm in $filteredvms){
         #Pull tags from Source VM
         $vmtags = get-vm $singlevm | Get-TagAssignment
 
+        #define target datastore
+        $sourceDatastore = ($singlevm | Get-Datastore)
+        $targetDatastore = foreach ($singleDatastore in $targetDatastores){
+            if ($singleDatastore.name -contains $sourceDatastore.name){
+                $singleDatastore
+            }
+        }
 
         #Select random host from Target Cluster to migrate to
-        $targetHost = get-Cluster $TargetCluster | get-vmhost | where{$_.ConnectionState -eq “Connected”} | get-random
+        $targetHost = $TargetCluster | get-vmhost | where{$_.ConnectionState -eq “Connected”} | get-random
 
         #Get Target VM Folder name
         $targetVMFolder = $targetDatacenter | Get-Folder | where{($_.type -eq "VM") -and ($_.name -eq $singlevm.Folder.Name)}
 
         #start VM Migration
         Write-Host -ForegroundColor Green "Migrating vm $singlevm to Target VCSA Host $targetHost"
-        $singlevm | Move-VM -Destination $targethost -PortGroup $AllTargetportgroups -WhatIf
+        $singlevm | Move-VM -Destination $targetHost -PortGroup $AllTargetportgroups -datastore $targetDatastore
+
+        #redefine VM Object in target VCSA
+        $singlevmdest = get-vm | where {$_.name -like $singlevm.name}
 
         #start Folder Migration
         Write-Host -ForegroundColor Green "Migrating vm $singlevm to Target VCSA Folder $targetVMFolder"
-        $singlevm | Move-VM -Destination $TargetVMFolder -WhatIf
+        $singlevmdest | Move-VM -Destination $TargetVMFolder
 
         #Re-Apply Tags (needs work)
         #$vmtags | %{get-vm $singlevm -Server $DestVC | New-TagAssignment -Tag ($_.Tag).name -Server $DestVC | Select Entity, Tag}
@@ -524,3 +542,19 @@ foreach ($singlevm in $filteredvms){
         
     }
 }
+
+#Clear All Variables
+$SourceDatacenter = $null
+$sourceHosts = $null
+$sourceClusters = $null
+$SourcePortgroups = $null
+$SourceVMs = $null
+$targetDatacenter = $null
+$targetHosts = $null
+$targetClusters = $null
+$targetPortgroup = $null
+$targetDatastores = $null
+$filteredVMs = $null
+$SourceVMs = $null
+
+Disconnect-VIServer "*" -Confirm:$false
