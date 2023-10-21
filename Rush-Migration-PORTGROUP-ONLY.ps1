@@ -78,7 +78,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK){
 
 #Connect to Source VCSA
 Write-Host "Connecting to $sourceVCSA"
-Try {connect-viserver $sourceVCSA -Credential $sourceVCSACredentials} Catch {Connection-Alert $sourceVCSA ;break}
+Try {connect-viserver "$sourceVCSA" -Credential $sourceVCSACredentials} Catch {Connection-Alert $sourceVCSA ;break}
 
 #Collect Source variable info
 $SourceDatacenter = Get-Datacenter
@@ -392,7 +392,8 @@ Start-Sleep 10
 #Execution portion
 foreach ($singlevm in $filteredvms){
 
-    
+    #get network adapter count
+    $networkAdapter = Get-NetworkAdapter -VM $singlevm | Sort-Object
 
     #multi-DS exclusion
     if ($multiDSexclusion.name -contains $singlevm.name){
@@ -525,8 +526,15 @@ foreach ($singlevm in $filteredvms){
         $targetVMFolder = $targetDatacenter | Get-Folder | where{($_.type -eq "VM") -and ($_.name -eq $singlevm.Folder.Name)}
 
         #start VM Migration
-        Write-Host -ForegroundColor Green "Migrating vm $singlevm to Target VCSA Host $targetHost"
-        $singlevm | Move-VM -Destination $targetHost -PortGroup $AllTargetportgroups -datastore $targetDatastore
+        if($Netadaptercount -eq 1){
+            Write-Host -ForegroundColor Green "Migrating SINGLE-NIC vm $singlevm to Target VCSA Host $targetHost"
+            $singlevm | Move-VM -Destination $targetHost -PortGroup $AllTargetportgroups -datastore $targetDatastore
+        }
+
+        if($Netadaptercount -eq 2){
+            Write-Host -ForegroundColor Green "Migrating MULTI-NIC vm $singlevm to Target VCSA Host $targetHost"
+            $singlevm | Move-VM -Destination $targetHost -NetworkAdapter $networkAdapter -PortGroup $AllTargetportgroups -datastore $targetDatastore
+        }
 
         #redefine VM Object in target VCSA
         $singlevmdest = get-vm | where {$_.name -like $singlevm.name}
