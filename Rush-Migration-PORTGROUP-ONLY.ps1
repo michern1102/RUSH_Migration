@@ -1,3 +1,9 @@
+#This script is for migrating VM's from 1 VCSA to another that are NOT in ELM
+#This script will not do any NIC's more than 2
+#This script will skip Multi Datastore VM's
+#this script will not migrate any VM's with snapshots
+#this script will only migrate if the SAME Datastores are presented to BOTH VCSA's
+
 #Root Folder - Anything running off this script will come from this folder
 $RootFolder = "C:\Scripts"
 
