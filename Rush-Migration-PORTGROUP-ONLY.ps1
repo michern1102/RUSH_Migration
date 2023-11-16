@@ -24,7 +24,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'Select a Target vCenter'
+$form.Text = 'Select a Source vCenter'
 $form.Size = New-Object System.Drawing.Size(600,400)
 $form.StartPosition = 'CenterScreen'
 
@@ -47,7 +47,7 @@ $form.Controls.Add($cancelButton)
 $label = New-Object System.Windows.Forms.Label
 $label.Location = New-Object System.Drawing.Point(20,40)
 $label.Size = New-Object System.Drawing.Size(560,40)
-$label.Text = 'Select a Target vCenter:'
+$label.Text = 'Select a Source vCenter:'
 $form.Controls.Add($label)
 
 $listBox = New-Object System.Windows.Forms.ListBox
@@ -157,6 +157,7 @@ $targetHosts = Get-VMHost
 $targetClusters = Get-Cluster
 $targetPortgroups = Get-VDPortgroup | Sort-Object
 $targetDatastores = Get-Datastore
+$targetTags = get-tag
 
 Disconnect-VIServer "*" -confirm:$False
 
@@ -392,6 +393,9 @@ Start-Sleep 10
 #Execution portion
 foreach ($singlevm in $filteredvms){
 
+    #Get Tag info
+    $SourceVMTags = $singlevm | Get-TagAssignment
+
     #get network adapter count
     $networkAdapter = Get-NetworkAdapter -VM $singlevm | Sort-Object
 
@@ -508,9 +512,6 @@ foreach ($singlevm in $filteredvms){
         $args = "/k ping $FirstIP -t"
         Start-Process -FilePath "$env:comspec" -ArgumentList $args
 
-        #Pull tags from Source VM
-        $vmtags = get-vm $singlevm | Get-TagAssignment
-
         #define target datastore
         $sourceDatastore = ($singlevm | Get-Datastore)
         $targetDatastore = foreach ($singleDatastore in $targetDatastores){
@@ -543,8 +544,14 @@ foreach ($singlevm in $filteredvms){
         Write-Host -ForegroundColor Green "Migrating vm $singlevm to Target VCSA Folder $targetVMFolder"
         $singlevmdest | Move-VM -Destination $TargetVMFolder
 
-        #Re-Apply Tags (needs work)
-        #$vmtags | %{get-vm $singlevm -Server $DestVC | New-TagAssignment -Tag ($_.Tag).name -Server $DestVC | Select Entity, Tag}
+        #apply new tags based on old tags
+        foreach ($singleVMtag in $SourceVMTags){
+
+            $targetTag = $targetTags | where {$_.name -contains $singleVMtag.tag.name}
+
+            $singlevmdest | New-TagAssignment -Tag $targetTag
+
+        }
 
         $AllTargetportgroups = $null
         
